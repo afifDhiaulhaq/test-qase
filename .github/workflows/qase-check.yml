@@ -1,57 +1,49 @@
-name: Check Qase Test Run Status
+name: Monitor Qase Test Run
 
 on:
-  schedule:
-    - cron: '*/1 * * * *'  # Setiap 1 menit
-  workflow_dispatch:       # Bisa dijalankan manual
-  push:
-    branches:
-      - main  # Pastikan workflow hanya berjalan di branch 'main'
+  workflow_dispatch:     # Bisa dijalankan manual
 
 jobs:
-  check-qase-run:
+  check-qase-status:
     runs-on: ubuntu-latest
 
     steps:
       - name: Install jq
-        run: sudo apt-get install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Call Qase API
+        id: check-qase
         env:
           QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
           QASE_PROJECT_CODE: ${{ secrets.QASE_PROJECT_CODE }}
           QASE_RUN_ID: ${{ secrets.QASE_RUN_ID }}
         run: |
-          echo "⏳ Checking Qase test run status..."
-    
-          # Call the Qase API and capture both response and HTTP status code
-          RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
-            -X GET "https://api.qase.io/v2/${QASE_PROJECT_CODE}/run/${QASE_RUN_ID}" \
+          echo "📡 Checking Qase test run status..."
+
+          RESPONSE=$(curl -s -X GET "https://api.qase.io/v2/${QASE_PROJECT_CODE}/run/${QASE_RUN_ID}" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
-      
-          # Extract HTTP status code
-          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-          
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "❌ API request failed with status: $HTTP_STATUS"
-            cat response.json
-            exit 1
-          fi
-          
-          # Extract the result from the response
-          RESULT=$(cat response.json)
-          STATUS=$(echo "$RESULT" | jq -r '.result.status')
-      
-          echo "Raw response:"
-          echo "$RESULT"
-      
-          echo "🔍 Qase Test Run Status: $STATUS"
-          
-          # Check if the test run is completed
-          if [ "$STATUS" = "completed" ]; then
-            echo "✅ Test run is completed."
-          else
-            echo "🚧 Test run is still active."
-            exit 1  
-          fi
+
+          echo "Raw Response: $RESPONSE"
+
+          STATUS=$(echo "$RESPONSE" | jq -r '.result.status')
+          FAILED=$(echo "$RESPONSE" | jq -r '.result.stats.failed')
+
+          echo "Qase Test Run Status: $STATUS"
+          echo "Failed tests: $FAILED"
+
+          echo "::set-output name=status::$STATUS"
+          echo "::set-output name=failed::$FAILED"
+
+      - name: Create GitHub Issue if Needed
+        if: steps.check-qase.outputs.status != 'completed' || steps.check-qase.outputs.failed != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          TITLE="🚨 Qase Test Run ${{ secrets.QASE_RUN_ID }} Issue"
+          BODY="Status: \`${{ steps.check-qase.outputs.status }}\`\nFailed Tests: \`${{ steps.check-qase.outputs.failed }}\`\n\nSilakan cek di Qase dashboard."
+
+          curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
