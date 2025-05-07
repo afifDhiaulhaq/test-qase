@@ -23,7 +23,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           echo "📡 Checking Qase test run status..."
-          RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/run/${QASE_PROJECT_CODE}/${QASE_RUN_ID}" \
+          RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/result/${QASE_PROJECT_CODE}/${QASE_RUN_ID}" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
           
