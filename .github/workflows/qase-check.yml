@@ -1,0 +1,40 @@
+name: Check Qase Test Run Status
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Setiap 5 menit
+  workflow_dispatch:       # Bisa dijalankan manual
+
+jobs:
+  check-qase-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install jq
+        run: sudo apt-get install jq
+
+      - name: Call Qase API
+        env:
+          QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
+          QASE_PROJECT_CODE: ${{ secrets.QASE_PROJECT_CODE }}
+          QASE_RUN_ID: ${{ secrets.QASE_RUN_ID }}
+        run: |
+          echo "⏳ Checking Qase test run status..."
+
+          RESPONSE=$(curl -s -X GET "https://api.qase.io/v2/${QASE_PROJECT_CODE}/run/${QASE_RUN_ID}" \
+            -H "Content-Type: application/json" \
+            -H "Token: ${QASE_API_TOKEN}")
+
+          echo "Raw response:"
+          echo "$RESPONSE"
+
+          STATUS=$(echo "$RESPONSE" | jq -r '.result.status')
+
+          echo "🔍 Qase Test Run Status: $STATUS"
+
+          if [ "$STATUS" = "completed" ]; then
+            echo "✅ Test run is completed."
+          else
+            echo "🚧 Test run is still active."
+            exit 1  # Optional: bikin job gagal jika run belum selesai
+          fi
