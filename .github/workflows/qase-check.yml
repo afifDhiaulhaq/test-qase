@@ -33,8 +33,13 @@ jobs:
             exit 1
           fi
 
-          STATUS=$(echo "$RESPONSE" | jq -r '.result[0].status')
-          FAILED=$(echo "$RESPONSE" | jq -r '[.result.entities[] | select(.status == "failed")] | length')
+          FAILED=$(echo "$RESPONSE" | jq '[.result.entities[] | select(.status == "failed")] | length')
+
+          # Mendapatkan status keseluruhan dengan logika sederhana (jika ada yang gagal -> failed, jika tidak -> passed)
+          STATUS="passed"
+          if [ "$FAILED" -gt 0 ]; then
+            STATUS="failed"
+          fi
 
           FAILED_CASES=$(echo "$RESPONSE" | jq -r '
             [.result.entities[] 
@@ -43,10 +48,15 @@ jobs:
             ] | join("\n")
           ')
 
+          echo "Test Status: $STATUS"
+          echo "Failed Count: $FAILED"
+          echo -e "Failed Cases:\n$FAILED_CASES"
 
           echo "status=$STATUS" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
-          echo "failed_cases=$FAILED_CASES" >> $GITHUB_OUTPUT
+          echo "failed_cases<<EOF" >> $GITHUB_OUTPUT
+          echo "$FAILED_CASES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Issue if Failed
         if: steps.check-qase.outputs.failed != '0'
@@ -63,7 +73,7 @@ jobs:
           
           Silakan cek detail lebih lanjut di Qase dashboard.
           EOF
-          )
+                    )
                     curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
                       -H "Authorization: token $GH_TOKEN" \
                       -H "Content-Type: application/json" \
