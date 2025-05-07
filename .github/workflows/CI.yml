@@ -1,13 +1,13 @@
-name: CI - Run Tests
+name: Run Tests and Send Report to Qase
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,18 +17,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '16'  # Ganti sesuai versi yang kamu gunakan
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Run Tests
-        run: npm test
+      - name: Run Tests and Generate Result File
+        run: |
+          npm test > result.json
 
-      # (Opsional) Kirim hasil test ke Qase
-      # - name: Send Report to Qase
-      #   run: |
-      #     curl -X POST https://api.qase.io/v1/result/LP/run/1 \
-      #     -H "Content-Type: application/json" \
-      #     -H "Token: ${{ secrets.QASE_API_TOKEN }}" \
-      #     -d @result.json
+      - name: Send Test Results to Qase
+        run: |
+          curl -X POST https://api.qase.io/v1/result/LP/run/1\
+          -H "Content-Type: application/json" \
+          -H "Token: ${{ secrets.QASE_API_TOKEN }}" \
+          -d @result.json
