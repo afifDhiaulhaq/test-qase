@@ -21,7 +21,7 @@ jobs:
         run: |
           echo "⏳ Checking Qase test run status..."
 
-          RESPONSE=$(curl -s -X GET "https://api.qase.io/v2/${QASE_PROJECT_CODE}/run/${QASE_RUN_ID}/result" \
+          RESPONSE=$(curl -s -X GET "https://api.qase.io/v2/LP/run/2" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
 
