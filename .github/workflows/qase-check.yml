@@ -34,8 +34,15 @@ jobs:
           fi
 
           STATUS=$(echo "$RESPONSE" | jq -r '.result[0].status')
-          FAILED=$(echo "$RESPONSE" | jq -r '[.result[] | select(.status == "failed")] | length')
-          FAILED_CASES=$(echo "$RESPONSE" | jq -r '[.result[] | select(.status == "failed") | "- \(.case.title // "No Title")"] | join("\n")')
+          FAILED=$(echo "$RESPONSE" | jq -r '[.result.entities[] | select(.status == "failed")] | length')
+
+          FAILED_CASES=$(echo "$RESPONSE" | jq -r '
+            [.result.entities[] 
+              | select(.status == "failed") 
+              | "- Case ID: \(.case_id) (status: \(.status))"
+            ] | join("\n")
+          ')
+
 
           echo "status=$STATUS" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
