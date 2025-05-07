@@ -20,22 +20,35 @@ jobs:
           QASE_RUN_ID: ${{ secrets.QASE_RUN_ID }}
         run: |
           echo "⏳ Checking Qase test run status..."
-
-          RESPONSE=$(curl -s -X GET "https://api.qase.io/v2/LP/run/2" \
+    
+          # Call the Qase API and capture both response and HTTP status code
+          RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
+            -X GET "https://api.qase.io/v2/${QASE_PROJECT_CODE}/run/${QASE_RUN_ID}/result" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
-
+      
+          # Extract HTTP status code
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ API request failed with status: $HTTP_STATUS"
+            cat response.json
+            exit 1
+          fi
+          
+          # Extract the result from the response
+          RESULT=$(cat response.json)
+          STATUS=$(echo "$RESULT" | jq -r '.result.status')
+      
           echo "Raw response:"
-          echo "$RESPONSE"
-
-          STATUS=$(echo "$RESPONSE" | jq -r '.result.status')
-
+          echo "$RESULT"
+      
           echo "🔍 Qase Test Run Status: $STATUS"
-
+          
+          # Check if the test run is completed
           if [ "$STATUS" = "completed" ]; then
             echo "✅ Test run is completed."
           else
             echo "🚧 Test run is still active."
             exit 1  # Optional: bikin job gagal jika run belum selesai
           fi
-          #test
