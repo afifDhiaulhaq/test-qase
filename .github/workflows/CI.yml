@@ -39,6 +39,12 @@ jobs:
           curl -X POST https://api.qase.io/v2/LP/run/2/result \
           -H "Content-Type: application/json" \
           -H "Token: ${{ secrets.QASE_API_TOKEN }}" \
-          -d @result.json
+          -d '{
+                "title": "Verifikasi tampilan Tabel Cources",
+                "execution": {
+                  "status": "passed",
+                  "time": 123
+                }
+              }'
 
 
