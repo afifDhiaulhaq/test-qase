@@ -1,0 +1,15 @@
+{
+  "name": "your-project",
+  "version": "1.0.0",
+  "description": "Project connected to Qase for reporting",
+  "scripts": {
+    "test": "jest",
+    "send-report": "node sendReportToQase.js"
+  },
+  "devDependencies": {
+    "jest": "^26.0.0"
+  },
+  "dependencies": {
+    "qaseio": "^1.0.0"
+  }
+}
