@@ -45,7 +45,7 @@ jobs:
           for CASE_ID in $(echo "$RESPONSE" | jq -r '.result.entities[] | select(.status == "failed") | .case_id' | sort | uniq); do
             CASE_TITLE=$(curl -s -X GET "https://api.qase.io/v1/case/${QASE_PROJECT_CODE}/${CASE_ID}" \
               -H "Token: ${QASE_API_TOKEN}" | jq -r '.result.title')
-            FAILED_CASES+="- $CASE_TITLE (Case ID: $CASE_ID)\n"
+            FAILED_CASES+="- **$CASE_TITLE** (Case ID: $CASE_ID)\n"
           done
 
           echo "Test Status: $STATUS"
