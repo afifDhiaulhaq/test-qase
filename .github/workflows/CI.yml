@@ -40,11 +40,5 @@ jobs:
           -H "Content-Type: application/json" \
           -H "Token: ${{ secrets.QASE_API_TOKEN }}" \
           -d @result.json
-          -d '{
-                "status": "passed",
-                "case_id": 1,
-                "comment": "Test case executed successfully",
-                "time": 123
-              }'
 
 
