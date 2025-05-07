@@ -33,8 +33,8 @@ jobs:
             exit 1
           fi
 
-          FAILED=$(echo "$RESPONSE" | jq '[.result.entities[] | select(.status == "failed")] | length')
-
+          FAILED=$(echo "$RESPONSE" | jq '[.result.entities[] | select(.status == "failed") | .case_id] | unique | length')
+          
           # Mendapatkan status keseluruhan dengan logika sederhana (jika ada yang gagal -> failed, jika tidak -> passed)
           STATUS="passed"
           if [ "$FAILED" -gt 0 ]; then
