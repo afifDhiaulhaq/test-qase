@@ -68,9 +68,11 @@ jobs:
           Silakan cek detail lebih lanjut di Qase dashboard.
           EOF
           )
-          
                     # Create GitHub issue if needed
                     curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
                       -H "Authorization: token $GH_TOKEN" \
                       -H "Content-Type: application/json" \
                       -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
+
+          # Menampilkan raw response untuk debugging
+          echo "Raw Response: $RESPONSE"
