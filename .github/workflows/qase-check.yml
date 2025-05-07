@@ -42,9 +42,9 @@ jobs:
           fi
 
           FAILED_CASES=$(echo "$RESPONSE" | jq -r '
-           [.result.entities[]
+            [.result.entities[]
               | select(.status == "failed")
-              | {id: .case_id, title: .case.title}
+              | {id: .case_id, title: (.case.title // "No Title")}
             ]
             | unique
             | map("- \(.title) (Case ID: \(.id))")
