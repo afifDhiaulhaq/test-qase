@@ -40,11 +40,7 @@ jobs:
           -H "Content-Type: application/json" \
           -H "Token: ${{ secrets.QASE_API_TOKEN }}" \
           -d '{
-                "title": "Verifikasi tampilan Tabel Cources",
-                "execution": {
-                  "status": "passed",
-                  "time": 123
-                }
+                "status": "completed"
               }'
 
 
