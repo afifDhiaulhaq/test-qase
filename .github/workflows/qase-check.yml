@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '*/1 * * * *'  # Setiap 1 menit
   workflow_dispatch:       # Bisa dijalankan manual
+  push:
+    branches:
+      - main  # Pastikan workflow hanya berjalan di branch 'main'
 
 jobs:
   check-qase-run:
