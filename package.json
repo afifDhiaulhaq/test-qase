@@ -16,6 +16,6 @@
     "test": "jest"
   }
   "scripts": {
-  "test": "jest --json --outputFile=./test-results/result.json"
+  "test": "jest --json --outputFile=result.json"
   }
 }
