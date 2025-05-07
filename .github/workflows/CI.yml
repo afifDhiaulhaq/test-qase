@@ -23,8 +23,7 @@ jobs:
         run: npm install
 
       - name: Run Tests and Generate Result File
-        run: |
-          npm test > result.json
+        run: npm test
 
       - name: Send Test Results to Qase
         run: |
