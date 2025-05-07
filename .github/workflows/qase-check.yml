@@ -1,7 +1,7 @@
 name: Monitor Qase Test Run
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:     # Bisa dijalankan manual
   push:
     branches:
       - main
@@ -14,7 +14,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get Qase Run Summary
+      - name: Call Qase API
         id: check-qase
         env:
           QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
@@ -22,46 +22,32 @@ jobs:
           QASE_RUN_ID: ${{ secrets.QASE_RUN_ID }}
         run: |
           echo "📡 Checking Qase test run status..."
-
-          RUN_RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/run/${QASE_PROJECT_CODE}/${QASE_RUN_ID}" \
+          RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/run/${QASE_PROJECT_CODE}/${QASE_RUN_ID}" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
           
-          echo "Run Summary: $RUN_RESPONSE"
+          # Print the entire response to verify its structure
+          echo "Raw Response: $RESPONSE"
 
-          STATUS_CODE=$(echo "$RUN_RESPONSE" | jq -r '.result.status')
-          FAILED=$(echo "$RUN_RESPONSE" | jq -r '.result.stats.failed')
+          # Check if the result is null or if there was an error
+          if echo "$RESPONSE" | jq -e '.result == null' > /dev/null; then
+            echo "❌ Test run result not found. Please verify the QASE_RUN_ID."
+            exit 1  # Exit the job if result is not found
+          fi
 
-          case "$STATUS_CODE" in
-            3) STATUS="completed" ;;
-            1) STATUS="active" ;;
-            *) STATUS="other" ;;
-          esac
+          # Extract Status and Failed Tests count
+          STATUS=$(echo "$RESPONSE" | jq -r '.result.status')
+          FAILED=$(echo "$RESPONSE" | jq -r '.result.stats.failed')
+          FAILED_TEST_CASES=$(echo "$RESPONSE" | jq -r '.result.failed_cases')
 
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "Qase Test Run Status: $STATUS"
+          echo "Failed tests: $FAILED"
+          echo "Failed Test Cases: $FAILED_TEST_CASES"  # Print failed test cases for verification
 
-      - name: Get Failed Test Cases
-        id: failed-cases
-        if: steps.check-qase.outputs.failed != '0'
-        env:
-          QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
-          QASE_PROJECT_CODE: ${{ secrets.QASE_PROJECT_CODE }}
-          QASE_RUN_ID: ${{ secrets.QASE_RUN_ID }}
-        run: |
-          echo "🔍 Fetching failed test case details..."
-          RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/result/${QASE_PROJECT_CODE}/${QASE_RUN_ID}" \
-            -H "Content-Type: application/json" \
-            -H "Token: ${QASE_API_TOKEN}")
-          
-          echo "Raw Result Response: $RESPONSE"
-
-          FAILED_CASES=$(echo "$RESPONSE" | jq -r '.result[] | select(.status=="failed") | "- " + .case.title')
-          
-          echo "$FAILED_CASES" > failed_cases.txt
-          echo "cases<<EOF" >> $GITHUB_OUTPUT
-          cat failed_cases.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Set outputs for later use
+          echo "::set-output name=status::$STATUS"
+          echo "::set-output name=failed::$FAILED"
+          echo "::set-output name=failed_cases::$FAILED_TEST_CASES"  # Set failed cases output
 
       - name: Create GitHub Issue if Needed
         if: steps.check-qase.outputs.status != 'completed' || steps.check-qase.outputs.failed != '0'
@@ -70,15 +56,20 @@ jobs:
         run: |
           TITLE="🚨 Qase Test Run ${{ secrets.QASE_RUN_ID }} Issue"
           
-           BODY=$(cat <<EOF
-            Status: \`${{ steps.check-qase.outputs.status }}\`
-            Failed Tests: \`${{ steps.check-qase.outputs.failed }}\`
-            
-            Silakan cek detail lebih lanjut di Qase dashboard.
-            EOF
-                )
-            
-                curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
-                  -H "Authorization: token $GH_TOKEN" \
-                  -H "Content-Type: application/json" \
-                  -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
+          # Create body with correctly formatted message
+          BODY=$(cat <<EOF
+          Status: \`${{ steps.check-qase.outputs.status }}\`
+          Failed Tests: \`${{ steps.check-qase.outputs.failed }}\`
+          
+          **Failed Test Cases:**
+          \`${{ steps.check-qase.outputs.failed_cases }}\`
+          
+          Silakan cek detail lebih lanjut di Qase dashboard.
+          EOF
+                    )
+          
+                    # Create GitHub issue if needed
+                    curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
+                      -H "Authorization: token $GH_TOKEN" \
+                      -H "Content-Type: application/json" \
+                      -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
