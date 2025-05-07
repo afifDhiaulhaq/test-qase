@@ -69,13 +69,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           TITLE="🚨 Qase Test Run ${{ secrets.QASE_RUN_ID }} Issue"
-          BODY="Status: \`${{ steps.check-qase.outputs.status }}\`
-Failed Tests: \`${{ steps.check-qase.outputs.failed }}\`
-
-${{ steps.failed-cases.outputs.cases }}
-
-Silakan cek detail lebih lanjut di Qase dashboard."
-          curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
+          
+           BODY=$(cat <<EOF
+            Status: \`${{ steps.check-qase.outputs.status }}\`
+            Failed Tests: \`${{ steps.check-qase.outputs.failed }}\`
+            
+            Silakan cek detail lebih lanjut di Qase dashboard.
+            EOF
+                )
+            
+                curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
+                  -H "Authorization: token $GH_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
