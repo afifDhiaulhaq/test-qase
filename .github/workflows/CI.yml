@@ -36,9 +36,15 @@ jobs:
 
       - name: Send Test Results to Qase
         run: |
-          curl -X POST https://api.qase.io/v1/result/LP/run/1/result \
+          curl -X POST https://api.qase.io/v2/result/LP/run/2/result \
           -H "Content-Type: application/json" \
           -H "Token: ${{ secrets.QASE_API_TOKEN }}" \
           -d @result.json
+          -d '{
+                "status": "passed",
+                "case_id": 1,
+                "comment": "Test case executed successfully",
+                "time": 123
+              }'
 
 
