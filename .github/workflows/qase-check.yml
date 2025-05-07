@@ -2,6 +2,9 @@ name: Monitor Qase Test Run
 
 on:
   workflow_dispatch:     # Bisa dijalankan manual
+  push:
+    branches:
+      - main
 
 jobs:
   check-qase-status:
