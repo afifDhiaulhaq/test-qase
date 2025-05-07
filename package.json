@@ -13,9 +13,6 @@
     "qaseio": "^1.0.0"
   },
   "scripts": {
-    "test": "jest"
-  }
-  "scripts": {
   "test": "jest --json --outputFile=./test-results/result.json"
   }
 }
