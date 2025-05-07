@@ -2,7 +2,7 @@ name: Check Qase Test Run Status
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Setiap 5 menit
+    - cron: '*/5 * * * *'  # Setiap 1 menit
   workflow_dispatch:       # Bisa dijalankan manual
 
 jobs:
