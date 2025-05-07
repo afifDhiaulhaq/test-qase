@@ -26,7 +26,7 @@ jobs:
     
           # Call the Qase API and capture both response and HTTP status code
           RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
-            -X GET "https://api.qase.io/v2/${QASE_PROJECT_CODE}/run/${QASE_RUN_ID}/result" \
+            -X GET "https://api.qase.io/v2/${QASE_PROJECT_CODE}/run/${QASE_RUN_ID}" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
       
