@@ -41,15 +41,12 @@ jobs:
             STATUS="failed"
           fi
 
-          FAILED_CASES=$(echo "$RESPONSE" | jq -r '
-            [.result.entities[]
-              | select(.status == "failed")
-              | {id: .case_id, title: (.case.title // "No Title")}
-            ]
-            | unique
-            | map("- \(.title) (Case ID: \(.id))")
-            | join("\n")
-          ')
+          FAILED_CASES=""
+          for CASE_ID in $(echo "$RESPONSE" | jq -r '.result.entities[] | select(.status == "failed") | .case_id'); do
+            CASE_TITLE=$(curl -s -X GET "https://api.qase.io/v1/case/${QASE_PROJECT_CODE}/${CASE_ID}" \
+              -H "Token: ${QASE_API_TOKEN}" | jq -r '.result.title')
+            FAILED_CASES+="- $CASE_TITLE (Case ID: $CASE_ID)\n"
+          done
 
           echo "Test Status: $STATUS"
           echo "Failed Count: $FAILED"
