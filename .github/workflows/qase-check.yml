@@ -20,6 +20,7 @@ jobs:
           QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
           QASE_PROJECT_CODE: ${{ secrets.QASE_PROJECT_CODE }}
           QASE_RUN_ID: ${{ secrets.QASE_RUN_ID }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           echo "📡 Checking Qase test run status..."
           RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/run/${QASE_PROJECT_CODE}/${QASE_RUN_ID}" \
@@ -66,7 +67,7 @@ jobs:
           
           Silakan cek detail lebih lanjut di Qase dashboard.
           EOF
-                    )
+          )
           
                     # Create GitHub issue if needed
                     curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
