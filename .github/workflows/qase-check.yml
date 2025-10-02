@@ -16,15 +16,20 @@ jobs:
           RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/defect/${QASE_PROJECT_CODE}" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
-
+      
           echo "Raw Response: $RESPONSE"
-
+      
           # Ambil defect yang statusnya "open"
           OPEN_DEFECTS=$(echo "$RESPONSE" | jq '[.result.entities[] | select(.status == "open")]')
           COUNT=$(echo "$OPEN_DEFECTS" | jq 'length')
-
+      
           echo "open_count=$COUNT" >> $GITHUB_OUTPUT
-          echo "defects=$OPEN_DEFECTS" >> $GITHUB_OUTPUT
+      
+          # simpan JSON sebagai multiline output
+          echo "defects<<EOF" >> $GITHUB_OUTPUT
+          echo "$OPEN_DEFECTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
 
       - name: Create GitHub Issue for New Defects
         if: steps.check-defects.outputs.open_count != '0'
