@@ -1,81 +1,50 @@
-name: Monitor Qase Test Run
+name: Sync Qase Defects to GitHub Issues
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
-  check-qase-status:
+  sync-defects:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Call Qase API and Check Status
-        id: check-qase
+      - name: Check Qase Defects
+        id: check-defects
         env:
           QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
           QASE_PROJECT_CODE: ${{ secrets.QASE_PROJECT_CODE }}
-          QASE_RUN_ID: ${{ secrets.QASE_RUN_ID }}
         run: |
-          echo "📡 Checking Qase test run result..."
-          RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/result/${QASE_PROJECT_CODE}?run_id=${QASE_RUN_ID}" \
+          RESPONSE=$(curl -s -X GET "https://api.qase.io/v1/defect/${QASE_PROJECT_CODE}" \
             -H "Content-Type: application/json" \
             -H "Token: ${QASE_API_TOKEN}")
-          
+
           echo "Raw Response: $RESPONSE"
 
-          if echo "$RESPONSE" | jq -e '.result == null' > /dev/null; then
-            echo "❌ Test run result not found."
-            exit 1
-          fi
+          # Ambil defect yang statusnya "open"
+          OPEN_DEFECTS=$(echo "$RESPONSE" | jq '[.result.entities[] | select(.status == "open")]')
+          COUNT=$(echo "$OPEN_DEFECTS" | jq 'length')
 
-          FAILED=$(echo "$RESPONSE" | jq '[.result.entities[] | select(.status == "failed") | .case_id] | unique | length')
-          
-          # Mendapatkan status keseluruhan dengan logika sederhana (jika ada yang gagal -> failed, jika tidak -> passed)
-          STATUS="passed"
-          if [ "$FAILED" -gt 0 ]; then
-            STATUS="failed"
-          fi
+          echo "open_count=$COUNT" >> $GITHUB_OUTPUT
+          echo "defects=$OPEN_DEFECTS" >> $GITHUB_OUTPUT
 
-          FAILED_CASES=""
-          for CASE_ID in $(echo "$RESPONSE" | jq -r '.result.entities[] | select(.status == "failed") | .case_id' | sort | uniq); do
-            CASE_TITLE=$(curl -s -X GET "https://api.qase.io/v1/case/${QASE_PROJECT_CODE}/${CASE_ID}" \
-              -H "Token: ${QASE_API_TOKEN}" | jq -r '.result.title')
-              
-            FAILED_CASES+="- ${CASE_TITLE} (Case ID: ${CASE_ID})\n"
-          done
-
-          echo "Test Status: $STATUS"
-          echo "Failed Count: $FAILED"
-          echo -e "Failed Cases:\n$FAILED_CASES"
-
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
-          echo "failed_cases<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$FAILED_CASES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Issue if Failed
-        if: steps.check-qase.outputs.failed != '0'
+      - name: Create GitHub Issue for New Defects
+        if: steps.check-defects.outputs.open_count != '0'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          QASE_PROJECT_CODE: ${{ secrets.QASE_PROJECT_CODE }}
         run: |
-          TITLE="🚨 Qase Test Run ${{ secrets.QASE_RUN_ID }} Failed"
-          BODY=$(cat <<EOF
-          Status: \`${{ steps.check-qase.outputs.status }}\`
-          Failed Tests: \`${{ steps.check-qase.outputs.failed }}\`
-          
-          **Failed Test Cases:**
-          ${{ steps.check-qase.outputs.failed_cases }}
-          
-          Silakan cek detail lebih lanjut di Qase dashboard.
-          EOF
-                    )
-                    curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
-                      -H "Authorization: token $GH_TOKEN" \
-                      -H "Content-Type: application/json" \
-                      -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
+          for row in $(echo '${{ steps.check-defects.outputs.defects }}' | jq -r '.[] | @base64'); do
+            _jq() {
+              echo ${row} | base64 --decode | jq -r ${1}
+            }
+
+            TITLE="[Qase Defect] $(_jq '.title')"
+            BODY=$(cat <<EOF
+              **Defect ID:** $(_jq '.id')
+              **Description:** $(_jq '.actual_result')
+              **Severity:** $(_jq '.severity')
+              🔗 [Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))
+              EOF
+              )
+
+            curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
+              -H "Authorization: to
