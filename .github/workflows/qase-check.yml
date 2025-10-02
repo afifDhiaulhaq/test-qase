@@ -41,15 +41,13 @@ jobs:
             _jq() {
               echo ${row} | base64 --decode | jq -r ${1}
             }
-
+      
             TITLE="[Qase Defect] $(_jq '.title')"
-            BODY=$(cat <<EOF
-              **Defect ID:** $(_jq '.id')
-              **Description:** $(_jq '.actual_result')
-              **Severity:** $(_jq '.severity')
-              🔗 [Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))
-              EOF
-              )
-
+            BODY="**Defect ID:** $(_jq '.id')\n**Description:** $(_jq '.actual_result')\n**Severity:** $(_jq '.severity')\n🔗 [Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
+      
             curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
-              -H "Authorization: to
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
+          done
+
