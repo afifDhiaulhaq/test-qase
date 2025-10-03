@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  issues: write   # ✅ izinkan workflow bikin Issue
+  issues: write   # supaya GITHUB_TOKEN bisa bikin issue
 
 jobs:
   sync-defects:
@@ -50,21 +50,25 @@ jobs:
       
             TITLE="[Qase Defect] $(_jq '.title')"
 
-            # Ambil attachment URLs jika ada dan buang nilai null
-            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]?.file_url | select(. != null)')
+            # --- Ambil attachments (cek beberapa kemungkinan field) ---
+            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '
+              .attachments[]? 
+              | .file_url // .url // .path // empty
+            ')
 
             BODY="**Defect ID:** $(_jq '.id')\n**Description:** $(_jq '.actual_result')\n**Severity:** $(_jq '.severity')\n🔗 [Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
 
             if [ -n "$ATTACHMENTS" ]; then
               BODY="$BODY\n\n📎 **Attachments:**"
               for link in $ATTACHMENTS; do
-                # tampilkan inline jika gambar
                 if [[ "$link" =~ \.(png|jpg|jpeg|gif)$ ]]; then
                   BODY="$BODY\n![]($link)"
                 else
                   BODY="$BODY\n[$link]($link)"
                 fi
               done
+            else
+              BODY="$BODY\n\n📎 **Attachments:** (tidak ada / null)"
             fi
       
             curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
