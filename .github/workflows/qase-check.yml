@@ -30,7 +30,6 @@ jobs:
           echo "$OPEN_DEFECTS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-
       - name: Create GitHub Issue for New Defects
         if: steps.check-defects.outputs.open_count != '0'
         env:
@@ -43,23 +42,32 @@ jobs:
             }
       
             TITLE="[Qase Defect] $(_jq '.title')"
-            BODY="**Defect ID:** $(_jq '.id')\n"
-            BODY="$BODY**Description:** $(_jq '.actual_result')\n"
-            BODY="$BODY**Severity:** $(_jq '.severity')\n\n"
 
-            # Ambil attachment CloudFront link
-            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]?.file_url | select(. != null)')
+            BODY="## 🐞 Qase Defect Report\n\n"
+            BODY="$BODY**Defect ID:** $(_jq '.id')  \n"
+            BODY="$BODY**Severity:** $(_jq '.severity')  \n\n"
+            BODY="$BODY**Description:**  \n$(_jq '.actual_result')\n\n"
+            BODY="$BODY---\n\n"
+
+            # Ambil attachment CloudFront link (support beberapa kemungkinan field)
+            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]? | (.file_url // .url // .file.url) | select(. != null)')
 
             if [ -n "$ATTACHMENTS" ]; then
-              BODY="$BODY📎 **Attachments:**"
+              BODY="$BODY### 📎 Attachments"
               for link in $ATTACHMENTS; do
-                BODY="$BODY\n🔗 $link"
+                if [[ "$link" =~ \.(mp4|mov)$ ]]; then
+                  BODY="$BODY\n- 🎥 [$link]($link)"
+                elif [[ "$link" =~ \.(png|jpg|jpeg|gif)$ ]]; then
+                  BODY="$BODY\n- 🖼 [$link]($link)"
+                else
+                  BODY="$BODY\n- 📄 [$link]($link)"
+                fi
               done
             else
-              BODY="$BODY📎 Tidak ada attachment"
+              BODY="$BODY### 📎 Attachments\n❌ Tidak ada attachment"
             fi
 
-            BODY="$BODY\n\n[Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
+            BODY="$BODY\n\n---\n\n🔗 [Lihat detail di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
 
             curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
               -H "Authorization: token $GH_TOKEN" \
