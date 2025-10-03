@@ -3,9 +3,6 @@ name: Sync Qase Defects to GitHub Issues
 on:
   workflow_dispatch:
 
-permissions:
-  issues: write   # supaya GITHUB_TOKEN bisa bikin issue
-
 jobs:
   sync-defects:
     runs-on: ubuntu-latest
@@ -44,32 +41,12 @@ jobs:
             _jq() {
               echo ${row} | base64 --decode | jq -r ${1}
             }
-
-            echo "Row JSON:"
-            echo ${row} | base64 --decode | jq '.'
       
             TITLE="[Qase Defect] $(_jq '.title')"
-
-            # --- Ambil attachments (cek beberapa kemungkinan field) ---
-            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '
-              .attachments[]? 
-              | .file_url // .url // .path // empty
-            ')
-
-            BODY="**Defect ID:** $(_jq '.id')\n**Description:** $(_jq '.actual_result')\n**Severity:** $(_jq '.severity')\n🔗 [Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
-
-            if [ -n "$ATTACHMENTS" ]; then
-              BODY="$BODY\n\n📎 **Attachments:**"
-              for link in $ATTACHMENTS; do
-                if [[ "$link" =~ \.(png|jpg|jpeg|gif)$ ]]; then
-                  BODY="$BODY\n![]($link)"
-                else
-                  BODY="$BODY\n[$link]($link)"
-                fi
-              done
-            else
-              BODY="$BODY\n\n📎 **Attachments:** (tidak ada / null)"
-            fi
+            BODY="**Defect ID:** $(_jq '.id')\n"
+            BODY="$BODY**Description:** $(_jq '.actual_result')\n"
+            BODY="$BODY**Severity:** $(_jq '.severity')\n\n"
+            BODY="$BODY📎 [Lihat detail & attachment di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
       
             curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
               -H "Authorization: token $GH_TOKEN" \
