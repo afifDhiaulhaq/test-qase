@@ -34,7 +34,7 @@ jobs:
       - name: Create GitHub Issue for New Defects
         if: steps.check-defects.outputs.open_count != '0'
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           QASE_PROJECT_CODE: ${{ secrets.QASE_PROJECT_CODE }}
         run: |
           for row in $(echo '${{ steps.check-defects.outputs.defects }}' | jq -r '.[] | @base64'); do
