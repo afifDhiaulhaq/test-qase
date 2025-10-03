@@ -3,6 +3,9 @@ name: Sync Qase Defects to GitHub Issues
 on:
   workflow_dispatch:
 
+permissions:
+  issues: write   # ✅ supaya bisa bikin Issue
+
 jobs:
   sync-defects:
     runs-on: ubuntu-latest
@@ -43,11 +46,26 @@ jobs:
             }
       
             TITLE="[Qase Defect] $(_jq '.title')"
+
+            # ambil attachment URLs jika ada
+            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]?.file_url' 2>/dev/null)
+
             BODY="**Defect ID:** $(_jq '.id')\n**Description:** $(_jq '.actual_result')\n**Severity:** $(_jq '.severity')\n🔗 [Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
+
+            if [ -n "$ATTACHMENTS" ]; then
+              BODY="$BODY\n\n📎 **Attachments:**"
+              for link in $ATTACHMENTS; do
+                # kalau gambar (png/jpg/gif), pakai markdown image
+                if [[ "$link" =~ \.(png|jpg|jpeg|gif)$ ]]; then
+                  BODY="$BODY\n![]($link)"
+                else
+                  BODY="$BODY\n[$link]($link)"
+                fi
+              done
+            fi
       
             curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
               -H "Authorization: token $GH_TOKEN" \
               -H "Content-Type: application/json" \
               -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
           done
-
