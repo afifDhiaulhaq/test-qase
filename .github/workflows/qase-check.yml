@@ -46,18 +46,18 @@ jobs:
             DESC=$(_jq '.actual_result')
             SEVERITY=$(_jq '.severity')
 
-            # Ambil attachment CloudFront link
-            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]? | (.file_url // .url // .file.url) | select(. != null)')
+            # Ambil link CloudFront dari field file_url
+            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]?.file_url')
 
             ATTACH_TEXT="### 📎 Attachments"
             if [ -n "$ATTACHMENTS" ]; then
               for link in $ATTACHMENTS; do
                 if [[ "$link" =~ \.(mp4|mov)$ ]]; then
-                  ATTACH_TEXT="$ATTACH_TEXT\n- 🎥 [$link]($link)"
+                  ATTACH_TEXT="$ATTACH_TEXT\n- 🎥 [Video Attachment]($link)"
                 elif [[ "$link" =~ \.(png|jpg|jpeg|gif)$ ]]; then
-                  ATTACH_TEXT="$ATTACH_TEXT\n- 🖼 [$link]($link)"
+                  ATTACH_TEXT="$ATTACH_TEXT\n- 🖼 ![]($link)"
                 else
-                  ATTACH_TEXT="$ATTACH_TEXT\n- 📄 [$link]($link)"
+                  ATTACH_TEXT="$ATTACH_TEXT\n- 📄 [File Attachment]($link)"
                 fi
               done
             else
