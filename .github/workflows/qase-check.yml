@@ -30,7 +30,6 @@ jobs:
           echo "$OPEN_DEFECTS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-
       - name: Create GitHub Issue for New Defects
         if: steps.check-defects.outputs.open_count != '0'
         env:
@@ -47,7 +46,7 @@ jobs:
             DESC=$(_jq '.actual_result')
             SEVERITY=$(_jq '.severity')
 
-            # Ambil attachment CloudFront link (cek beberapa kemungkinan field)
+            # Ambil attachment CloudFront link
             ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]? | (.file_url // .url // .file.url) | select(. != null)')
 
             ATTACH_TEXT="### 📎 Attachments"
@@ -65,27 +64,15 @@ jobs:
               ATTACH_TEXT="$ATTACH_TEXT\n❌ Tidak ada attachment"
             fi
 
-            BODY=$(cat <<EOF
-              ## 🐞 Qase Defect Report
-              
-              **Defect ID:** $DEFECT_ID  
-              **Severity:** $SEVERITY  
-              
-              **Description:**  
-              $DESC  
-              
-              ---
-              
-              $ATTACH_TEXT
-              
-              ---
-              
-              🔗 [Lihat detail di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$DEFECT_ID)
-              EOF
-            )
+            BODY=$(printf "## 🐞 Qase Defect Report\n\n**Defect ID:** %s  \n**Severity:** %s\n\n**Description:**\n%s\n\n---\n\n%s\n\n---\n\n🔗 [Lihat detail di Qase](https://app.qase.io/defect/%s/defect/%s)" \
+              "$DEFECT_ID" "$SEVERITY" "$DESC" "$ATTACH_TEXT" "$QASE_PROJECT_CODE" "$DEFECT_ID")
 
             curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
               -H "Authorization: token $GH_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"
+              -d "$(jq -n \
+                --arg title "$TITLE" \
+                --arg body "$BODY" \
+                --argjson labels "[\"qase-defect\",\"severity:$SEVERITY\"]" \
+                '{title: $title, body: $body, labels: $labels}')"
           done
