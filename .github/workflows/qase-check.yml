@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  issues: write   # ✅ supaya bisa bikin Issue
+  issues: write   # ✅ izinkan workflow bikin Issue
 
 jobs:
   sync-defects:
@@ -44,18 +44,21 @@ jobs:
             _jq() {
               echo ${row} | base64 --decode | jq -r ${1}
             }
+
+            echo "Row JSON:"
+            echo ${row} | base64 --decode | jq '.'
       
             TITLE="[Qase Defect] $(_jq '.title')"
 
-            # ambil attachment URLs jika ada
-            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]?.file_url' 2>/dev/null)
+            # Ambil attachment URLs jika ada dan buang nilai null
+            ATTACHMENTS=$(echo ${row} | base64 --decode | jq -r '.attachments[]?.file_url | select(. != null)')
 
             BODY="**Defect ID:** $(_jq '.id')\n**Description:** $(_jq '.actual_result')\n**Severity:** $(_jq '.severity')\n🔗 [Lihat di Qase](https://app.qase.io/defect/${QASE_PROJECT_CODE}/defect/$(_jq '.id'))"
 
             if [ -n "$ATTACHMENTS" ]; then
               BODY="$BODY\n\n📎 **Attachments:**"
               for link in $ATTACHMENTS; do
-                # kalau gambar (png/jpg/gif), pakai markdown image
+                # tampilkan inline jika gambar
                 if [[ "$link" =~ \.(png|jpg|jpeg|gif)$ ]]; then
                   BODY="$BODY\n![]($link)"
                 else
